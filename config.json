@@ -1,0 +1,32 @@
+{
+  "concurrency": 300,
+  "cloudflare": {
+    "sample_per_24": 2,
+    "top_n": 50
+  },
+  "residential": {
+    "default_port": 443,
+    "top_n": 100,
+    "allow_mobile": false,
+    "sources": [
+      "https://raw.githubusercontent.com/ymyuuu/IPDB/main/bestproxy.txt",
+      "https://raw.githubusercontent.com/FoolVPN-ID/Nautica/main/proxyList.txt",
+      "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-https.txt",
+      "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/https/data.txt",
+      "https://raw.githubusercontent.com/vakhov/fresh-proxy-list/master/https.txt"
+    ],
+    "local_file": "my_sources.txt",
+    "domains": [
+      "cdn.xn--b6gac.eu.org"
+    ],
+    "shodan_queries": [],
+    "fofa_queries": [
+      "server==\"cloudflare\" && port==\"443\" && asn!=\"13335\" && country==\"JP\""
+    ]
+  },
+  "openvpn": {
+    "api": "http://www.vpngate.net/api/iphone/",
+    "top_n": 30,
+    "exclude_mobile": true
+  }
+}
