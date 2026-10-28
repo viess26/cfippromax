@@ -1,44 +1,31 @@
 # cfip
 
-自动收集 **Cloudflare 优选 IP** 和 **家宽 IP**，GitHub Actions 定时更新。
+自动收集 **Cloudflare 优选 IP**，GitHub Actions 每 6 小时更新一次。
 
 - `results/cfip.txt`：`IP:443#机房-延迟`
-- `results/residential_proxy.txt`：家宽 **反代 IP**（能反代 Cloudflare），`IP:端口#国家-运营商-机房-延迟`
-- `results/residential_direct.txt`：家宽 **非反代 IP**，`IP:端口#国家-运营商-延迟`
-- `results/openvpn.txt`：家宽 OpenVPN 节点列表 `IP:端口/协议#国家-运营商-延迟-速度`
-- `results/ovpn/*.ovpn`：对应的可直接导入客户端的配置文件
+
+## 来源
+官方 IPv4 段、`config.json` 里的 `extra_sources` 在线列表（支持 IP/CIDR）、`my_cf.txt` 本地文件。合并后统一测延迟，取最快的 `top_n` 个。
 
 ## 使用
-1. Fork / 新建仓库，上传本项目文件
-2. 编辑 `config.json`，在 `residential.sources` 填入你的家宽 IP 列表源（URL，纯文本，每行 `ip` 或 `ip:port`）
+1. 上传本项目文件，并创建 `.github/workflows/update.yml`
+2. Settings → Actions → General → Workflow permissions 选 Read and write
 3. Actions → update → Run workflow
 4. 订阅地址：`https://raw.githubusercontent.com/<你>/<仓库>/main/results/cfip.txt`
 
-## 说明
-- CF 部分：取官方 IP 段随机采样 → TCP 延迟 → 取前 N → 读取 colo。
-  注意这是**本机(Actions 机房)视角**的延迟，与你本地网络最优 IP 不同，想要贴合自己线路请在本地运行。
-- 反代判定：用 CF 域名 SNI 访问该 IP 的 443，若 `/cdn-cgi/trace` 返回 `colo=`，即为反代 IP，否则归入非反代。
-- 家宽判定：ip-api 的 `hosting=false` 且非移动网络。准确度有限，仅供参考。
+## 本地验证
+Actions 测的是美国机房视角，国内用请在自己电脑上复测（先下载结果文件到本地，关闭代理）：
 
-- OpenVPN 节点来自 [VPN Gate](https://www.vpngate.net)（志愿者 PC，不少是家宽），按 VPN Gate 评分排序，再用 ip-api 剔除机房/移动 IP。节点上下线频繁，建议定时更新；第三方节点可能记录日志，不要用来传输敏感数据。
+    python verify.py cfip.txt --tcp     # 只测端口连通和延迟
+    python verify.py cfip.txt           # 额外检查 /cdn-cgi/trace
 
-## 家宽 IP 来源汇总
-1. `sources`：在线 IP 列表（txt/CSV）
-2. `my_sources.txt`：自己收集的 IP
-3. `domains`：域名解析（DDNS 域名、公开 ProxyIP 域名），可写 `域名:端口`
-4. Shodan / FOFA：在仓库 Settings → Secrets 设置 `SHODAN_KEY` 或 `FOFA_EMAIL`+`FOFA_KEY`，再在 `config.json` 填查询语句；没配 key 会自动跳过
-5. VPN Gate：OpenVPN 志愿者节点（单独输出）
+结果输出到 `results/` 文件夹。
 
-## 本地验证 ProxyIP
-Actions 测的是美国机房视角，国内用请在自己电脑上验证：
+## 按地区保留
+- `results/cfip_all.txt` 是候选池（最多 `pool_n`(默认 3000) 个存活 IP）。
+- 机房(地区)取决于**测试者所在位置**，Actions 在美国，测出来基本都是美国机房。想按地区挑，要在自己电脑上运行：
 
-    python verify.py                       # 读 results/residential_proxy.txt
-    python verify.py <文件或raw链接>        # 指定来源
+      python verify.py cfip_all.txt --total=100
 
-结果输出到 `results/proxy_verified.txt`（`IP:端口#出口国家-机房-延迟`），每个 IP 连测 3 次且全部成功才保留。只需 Python 3.8+，无需安装依赖。
-
-### TCP 测试模式
-    python verify.py results/residential_direct.txt --tcp
-    python verify.py results/openvpn.txt --tcp
-
-只测端口连通和延迟（连 3 次全成功才保留），输出 `results/tcp_verified.txt`。`openvpn.txt` 里的 UDP 节点会被跳过，需用 OpenVPN 客户端实测。TCP 通只代表设备在线，不代表能当代理。
+  总共保留 100 个，各机房轮流各取最快的一个，直到凑够，保证每个地区都有。
+  可选：`--per-colo=5` 限制每个机房最多 5 个；`--by=loc` 改成按国家分组。结果在 `results/proxy_verified.txt`。
