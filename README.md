@@ -28,3 +28,17 @@
 3. `domains`：域名解析（DDNS 域名、公开 ProxyIP 域名），可写 `域名:端口`
 4. Shodan / FOFA：在仓库 Settings → Secrets 设置 `SHODAN_KEY` 或 `FOFA_EMAIL`+`FOFA_KEY`，再在 `config.json` 填查询语句；没配 key 会自动跳过
 5. VPN Gate：OpenVPN 志愿者节点（单独输出）
+
+## 本地验证 ProxyIP
+Actions 测的是美国机房视角，国内用请在自己电脑上验证：
+
+    python verify.py                       # 读 results/residential_proxy.txt
+    python verify.py <文件或raw链接>        # 指定来源
+
+结果输出到 `results/proxy_verified.txt`（`IP:端口#出口国家-机房-延迟`），每个 IP 连测 3 次且全部成功才保留。只需 Python 3.8+，无需安装依赖。
+
+### TCP 测试模式
+    python verify.py results/residential_direct.txt --tcp
+    python verify.py results/openvpn.txt --tcp
+
+只测端口连通和延迟（连 3 次全成功才保留），输出 `results/tcp_verified.txt`。`openvpn.txt` 里的 UDP 节点会被跳过，需用 OpenVPN 客户端实测。TCP 通只代表设备在线，不代表能当代理。
